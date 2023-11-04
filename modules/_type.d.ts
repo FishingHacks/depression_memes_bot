@@ -1,5 +1,4 @@
 import type {
-    ClientEvents,
     ApplicationCommandData,
     Client,
     CommandInteraction,
@@ -10,7 +9,7 @@ export default interface Module {
     name: string;
 
     commands?: Record<string, Command>;
-    events?: Record<keyof ClientEvents, (client: Client, ...args: ClientEvents[keyof ClientEvents]) => Awaitable<any>>;
+    init?: (client: Client) => Promise<void> | void;
 }
 
 export interface Command {

@@ -33,6 +33,8 @@ import { join } from 'path';
         'interactionCreate',
     ];
 
+    let promises: Array<any | Promise<any>> = [];
+
     for (const f of entries) {
         if (
             (ts && f.endsWith('.ts') && !f.endsWith('d.ts')) ||
@@ -40,28 +42,21 @@ import { join } from 'path';
         ) {
             try {
                 const file = join(__dirname, 'modules', f);
-                let module = (await import(file)).default as Module;
-                modules[module.name] = module;
-                if (module.commands)
-                    for (const cmd in module.commands) {
-                        module.commands[cmd].data.name = cmd;
+                let __module = (await import(file)).default as Module;
+                modules[__module.name] = __module;
+                if (__module.commands)
+                    for (const cmd in __module.commands) {
+                        __module.commands[cmd].data.name = cmd;
                         if (cmd in commands)
                             console.error(
                                 'module %s tried to register command %s, but it already existed',
-                                module.name,
+                                __module.name,
                                 cmd
                             );
-                        else commands[cmd] = module.name;
+                        else commands[cmd] = __module.name;
                     }
-                if (module.events)
-                    for (const _ev in module.events) {
-                        let ev = _ev as keyof ClientEvents;
-                        if (!registeredEvents.includes(ev)) {
-                            registeredEvents.push(ev);
-                            client.on(ev, callEvent.bind(globalThis, ev));
-                        }
-                    }
-                console.log('registered module %s!', module.name);
+                if (__module.init) promises.push(__module.init(client));
+                console.log('registered module %s!', __module.name);
             } catch (e) {
                 console.log(
                     `Failed to load module %s:\n\n%s\n\n(ur fault lol)`,
@@ -71,6 +66,8 @@ import { join } from 'path';
             }
         }
     }
+
+    await Promise.allSettled(promises);
 
     console.log('Registering modules done...');
     console.log('Starting bot...');
@@ -83,8 +80,6 @@ import { join } from 'path';
             new Date().toLocaleString(),
             client.user.tag
         );
-
-        callEvent('ready', client);
     });
 
     client.on('interactionCreate', (interaction) => {
@@ -92,39 +87,7 @@ import { join } from 'path';
             callCommand(interaction.commandName, interaction);
             return;
         }
-        callEvent('interactionCreate', interaction);
     });
-
-    function callEvent<K extends keyof ClientEvents>(
-        ev: K,
-        ...args: ClientEvents[K]
-    ) {
-        for (const name in modules) {
-            const m = modules[name];
-            if (m.events)
-                for (const e in m.events)
-                    if (e == ev) {
-                        try {
-                            let res = m.events[e](client, ...args);
-                            if (typeof res?.catch == 'function')
-                                res.catch(
-                                    error.bind({
-                                        name: ev,
-                                        m_name: m.name,
-                                        type: 'event',
-                                    })
-                                );
-                        } catch (err) {
-                            console.error(
-                                'Failed to run event %s on module %s:\n\n%s',
-                                ev,
-                                m.name,
-                                err
-                            );
-                        }
-                    }
-        }
-    }
 
     function callCommand(cmd: string, data: CommandInteraction) {
         if (!(cmd in commands)) return;
@@ -161,7 +124,7 @@ import { join } from 'path';
             process.exit(-1);
         }
         client.application.commands.set(_commands);
-        console.log('registered commands')
+        console.log('registered commands');
     }
 })().catch(console.error);
 

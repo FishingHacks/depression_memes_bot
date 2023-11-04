@@ -1,6 +1,6 @@
-import Module from './_type';
-
-const mod: Module = {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const mod = {
     name: 'reddit',
     commands: {
         reddit: {
@@ -11,12 +11,10 @@ const mod: Module = {
             run(ctx, _) {
                 ctx.reply({
                     ephemeral: true,
-                    content:
-                        '[r/depression_memes](https://reddit.com/depression_memes)',
+                    content: '[r/depression_memes](https://reddit.com/depression_memes)',
                 });
             },
         },
     },
 };
-
-export default mod;
+exports.default = mod;
